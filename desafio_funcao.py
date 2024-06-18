@@ -103,6 +103,7 @@ def ver_extrato(saldo,/,*, extrato):
     print("###################################")    
 
 ##### Chamando funções ###### 
+
 def main():
     saldo = 0
     limite = 500
