@@ -1,17 +1,29 @@
 
 from abc import ABC, abstractclassmethod, abstractproperty
 from datetime import datetime
-import textwrap
+import textwrap #fornece funções para formatar parágrafos de texto
 
 class ContaIterador:
     def __init__(self, contas): #Construtor
-        pass
+        self.contas = contas
+        self._index = 0
 
     def __iter__(self): #Define o valor a ser iterado
         pass
 
-    def __next__(self): #
-        pass
+    def __next__(self):
+        try:
+            conta = self.contas[self._index] #conta[indice] para imprimir as contas
+            return f"""\ 
+            Agência:\t{conta.agencia}
+            Número:\t\t{conta.numero}
+            Titular:\t{conta.cliente.nome}
+            Saldo:\t\tR$ {conta.saldo:.2f}
+        """
+        except IndexError:
+            raise StopIteration #para a iteraçao
+        finally:
+            self._index += 1 #acrescenta +1 em index
 
 class Cliente:
     def __init__(self, endereco):
@@ -136,7 +148,13 @@ class Historico:
         )
 
     def gerar_relatorio(self, tipo_transacao=None):
-        pass
+        for transacao in self._transacoes:
+            #Verifica se "tipo_transacao" é None (ou seja, nenhum e none é o valor padrão)
+            # e se transacao["tipo"] o tipo de transação que foi passado é o mesmo da variael "tipo_transação"
+            #caso uma das duas seja True elas ficaram guardadas para gerar o relatorio
+            if tipo_transacao is None or transacao["tipo"].lower() == tipo_transacao.lower():
+                yield transacao #Retorno (em gerador)
+
 
 class Transacao(ABC): #Classe Abstrata
     @property
@@ -179,7 +197,12 @@ class Deposito(Transacao):
             conta.historico.adicionar_transacao(self)
 
 def log_transacao(func): # Função Decorador que recebe uma função como parametro
-    pass
+    def envelope(*args, **kwargs): #Usamos *args, **kwargs quando queremos passar argumentos
+        resultado = func(*args, **kwargs)
+        print(f"{datetime.now()}: {func.__name__.upper()}") #Printa a hora e o nome da função(saque ou deposito) em maiusculo
+        return resultado
+
+    return envelope
 
 
 def menu():
@@ -259,14 +282,15 @@ def exibir_extrato(clientes):
         return
 
     print("\n================ EXTRATO ================")
-    transacoes = conta.historico.transacoes
-
     extrato = ""
-    if not transacoes:
-        extrato = "Não foram realizadas movimentações."
-    else:
-        for transacao in transacoes:
-            extrato += f"\n{transacao['tipo']}:\n\tR$ {transacao['valor']:.2f}"
+    tem_transacao = False
+    #itera sobre todas as transações retornadas pelo método gerar_relatorio do objeto historico associado a conta, filtrando apenas as transações do tipo "saque".
+    for transacao in conta.historico.gerar_relatorio(tipo_transacao="saque"):
+        tem_transacao = True
+        extrato += f"\n{transacao['tipo']}:\n\tR$ {transacao['valor']:.2f}"
+
+    if not tem_transacao:
+        extrato = "Não foram realizadas movimentações"
 
     print(extrato)
     print(f"\nSaldo:\n\tR$ {conta.saldo:.2f}")
@@ -307,7 +331,7 @@ def criar_conta(numero_conta, clientes, contas):
 
 @log_transacao #Decorador
 def listar_contas(contas):
-    for conta in contas:
+    for conta in ContaIterador: #Classe Iterador
         print("=" * 100)
         print(textwrap.dedent(str(conta)))
 
